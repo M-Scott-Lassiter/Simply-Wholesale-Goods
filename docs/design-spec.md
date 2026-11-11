@@ -792,6 +792,31 @@ the developer README.
 Jest is optional only if a meaningful isolated JavaScript unit suite justifies it. Do not
 add another runner merely to duplicate Playwright or PHP coverage.
 
+### 12.4 Store fixture and demo environment
+
+- Keep wp-env development and automated test environments isolated from a separate,
+  persistent Docker Compose demo. Give the demo its own database and storage. Test
+  runs and resets must never modify demo data.
+
+- Commit a reviewed, sanitized store fixture under tests/fixtures/store/, preserving
+  relevant catalog, layouts, configuration, and public assets. Remove real private
+  data and credentials; generate synthetic accounts and orders during setup.
+  Keep original backups and unreviewed exports outside Git.
+
+- Route development and demo email to Mailpit with forwarding and relaying disabled,
+  and verify actual email capture. Use Stripe test configuration. Disable production
+  integrations before first booting a restored site.
+
+- Preserve demo data across ordinary restarts and plugin updates. Provide an explicit
+  operation to restore the starting fixture. Keep credentials, machine-specific
+  settings, and runtime data outside Git using the README's directory conventions.
+
+- Document fixture preparation, source versions, setup, access, plugin updates, test
+  payments, and reset procedures. Verify fresh-checkout setup, email capture, demo
+  persistence, and test isolation. Demonstrate the built plugin ZIP; exclude fixtures
+  and demo infrastructure from that ZIP. Production deployment must preserve the live
+  store's database and orders.
+
 ## 13. Automated acceptance criteria
 
 Use deterministic fixtures: Administrator, ordinary Customer, two Wholesale Vendors,
