@@ -27,7 +27,7 @@ previously approved business rules.
 
 1. **Discount base:** apply the percentage discount to the wholesale merchandise
    subtotal. Exclude shipping and unrelated fees. Include those charges when rounding
-   the final payable cash/check total. Shipping treatment was not explicitly specified
+   the final payable total for eligible offline payments. Shipping treatment was not explicitly specified
    by the owner; merchandise-only discounting is the selected v1 default.
 2. **Rounding midpoint:** round to the nearest whole USD dollar, with an exact
    half-dollar rounded upward.
@@ -47,8 +47,8 @@ previously approved business rules.
    otherwise been specified. Repository publication and production installation are
    separate from building the plugin.
 
-Direct bank transfer eligibility is an explicit user decision. It receives the same
-discount and whole-dollar rounding when enabled.
+Direct bank transfer eligibility is an explicit user decision. When enabled, bacs receives
+the same percentage discount and uses the same rounding toggle as cod and cheque.
 
 ### 1.2 Scope boundaries
 
@@ -463,12 +463,12 @@ The corresponding WooCommerce classes define these IDs. [S6]
 | --- | --- | --- | --- |
 | Cash on delivery, cod | Enabled | Yes | Yes, when rounding is on |
 | Check, cheque | Enabled | Yes | Yes, when rounding is on |
-| Direct bank transfer, bacs | Disabled | Yes whenever enabled | Yes |
+| Direct bank transfer, bacs | Disabled | Yes whenever enabled | Yes, when rounding is on |
 | Stripe and other methods | Existing configuration | No | No |
 
-The plugin MUST respect gateway availability. Supporting bank-transfer discounts does
-not enable bank transfer. If Keldy later enables it through WooCommerce, the discount
-works without a code change.
+The plugin MUST respect gateway availability. Supporting bank-transfer adjustments does
+not enable bank transfer. If Keldy later enables it through WooCommerce, the discount and
+configured rounding behavior work without a code change.
 
 Discount eligibility and rounding eligibility MUST be separate policies. Do not treat
 every non-Stripe method, or a display label containing "cash," as eligible.
@@ -481,7 +481,7 @@ plugin's payment adjustments.
 | Setting | Default | Behavior |
 | --- | --- | --- |
 | Offline payment discount percentage | 3.00% | Applies to cod, cheque, and bacs |
-| Round cash/check total to a whole dollar | On | Applies only to cod and cheque |
+| Round eligible offline totals to a whole dollar | On | Applies to cod, cheque, and bacs |
 | Wholesale page | Configured page ID | Used for navigation and login return |
 | Vendor access instructions/contact link | Existing store contact route | Shown to visitors without approval |
 
@@ -500,8 +500,8 @@ Use integer cents or exact decimal arithmetic for USD.
 - F = existing shipping and unrelated fees.
 - D = eligible percentage of S, rounded half-up to cents; otherwise zero.
 - U = S - D + F.
-- T = nearest whole dollar to U, ties upward, only for cash/check with rounding enabled;
-  otherwise T = U.
+- T = nearest whole dollar to U, ties upward, for cod, cheque, or bacs when rounding
+  is enabled; otherwise T = U.
 - R = T - U, the signed rounding adjustment.
 
 Tax is zero under the project's configured sales assumption. Do not add independent tax
@@ -521,7 +521,8 @@ number without changing the actual amount is not acceptable.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Cash/check, rounding on | $120.00 | $0.00 | -$3.60 | $116.40 | -$0.40 | $116.00 |
 | Cash/check, rounding off | $120.00 | $0.00 | -$3.60 | $116.40 | $0.00 | $116.40 |
-| Bank transfer when enabled | $120.00 | $0.00 | -$3.60 | $116.40 | $0.00 | $116.40 |
+| Bank transfer enabled, rounding on | $120.00 | $0.00 | -$3.60 | $116.40 | -$0.40 | $116.00 |
+| Bank transfer enabled, rounding off | $120.00 | $0.00 | -$3.60 | $116.40 | $0.00 | $116.40 |
 | Stripe | $120.00 | $0.00 | $0.00 | $120.00 | $0.00 | $120.00 |
 | Cash/check with delivery charge | $100.00 | $7.50 | -$3.00 | $104.50 | +$0.50 | $105.00 |
 
@@ -551,7 +552,7 @@ and MUST NOT be confused with a promotional coupon.
 Show clear logical rows such as:
 
 - Offline payment discount (3%).
-- Cash/check rounding.
+- Offline payment rounding.
 - Total.
 
 The displayed percentage label follows the configured or saved order rate. Store the
@@ -590,8 +591,8 @@ the plugin's own incentive.
 ## 9. Switching an existing offline order to card
 
 A vendor may submit a cash/check/bank-transfer order and later request card payment.
-The offline discount MUST be removed, and any cash/check rounding MUST also be removed,
-before collecting the card payment.
+The offline discount and any whole-dollar rounding adjustment MUST be removed before
+collecting the card payment.
 
 ### 9.1 Stored amounts govern the conversion
 
@@ -599,8 +600,9 @@ Use the original order's stored base prices, quantities, packaging, shipping/fee
 saved policy. Do not fetch current catalog prices or current case labels to reconstruct
 the amount owed.
 
-A $120 order placed for cash at $116 returns to $120 for Stripe even if the current
-catalog price has changed. A bank-transfer version of that same order is $116.40.
+A $120 order placed for cash, check, or bank transfer at $116 with rounding enabled
+returns to $120 for Stripe, even if the current catalog price has changed. With
+rounding disabled, the same offline order is $116.40 before switching to Stripe.
 
 Do not change paid, captured, partially refunded, or refunded transactions through an
 automatic method-switch recalculation. Refunds remain native WooCommerce operations
@@ -645,9 +647,9 @@ the same saved base:
 
 | Change | Result |
 | --- | --- |
-| Cash/check to Stripe | Remove discount and rounding |
-| Cash/check to bank transfer | Keep discount; remove rounding |
-| Bank transfer to cash/check | Keep discount; apply saved rounding policy |
+| Any eligible offline method to Stripe | Remove discount and rounding |
+| Cash/check to bank transfer | Keep discount; apply the same saved rounding policy |
+| Bank transfer to cash/check | Keep discount; apply the same saved rounding policy |
 | Any eligible offline method to another ineligible method | Remove both adjustments |
 
 A retry must not compound adjustments or allow a stale payment attempt to charge an
@@ -841,9 +843,9 @@ The normal test environment must not send live customer emails or collect real p
 | ID | Required result |
 | --- | --- |
 | M01 | cod and cheque receive the configured percentage discount |
-| M02 | bacs receives the discount when enabled, receives no dollar rounding, and is not enabled by plugin activation |
+| M02 | bacs receives the discount and follows the shared rounding toggle when enabled; plugin activation does not enable bacs |
 | M03 | Stripe/other ineligible methods receive neither adjustment |
-| M04 | Rounding defaults on; switching it off preserves the percentage discount |
+| M04 | The shared rounding setting defaults on; switching it off preserves the percentage discount for cod, cheque, and bacs |
 | M05 | All section 8 arithmetic fixtures pass, including half-dollar and small-total cases |
 | M06 | Multi-line discount allocation reconciles exactly to the declared aggregate deduction |
 | M07 | Repeated cart and order recalculations never compound adjustments |
@@ -975,8 +977,8 @@ Include concise instructions for:
 4. Creating wholesale variations, checking Wholesale only, and entering their prices.
 5. Offering bags and cases together or disabling wholesale bags.
 6. Moving from Case of 10 to Case of 20 without changing historical purchases.
-7. Adjusting the percentage and the independent cash/check rounding toggle.
-8. Enabling bank transfer in WooCommerce later, with the discount applying automatically.
+7. Adjusting the percentage and the independent rounding toggle shared by cash, check, and bank transfer.
+8. Enabling bank transfer in WooCommerce later, with the discount and configured rounding applying automatically.
 9. Recording offline collection through her existing order workflow and preparing an
    explicitly uncollected order for card payment.
 10. Installing an update ZIP and the live-site deactivation precaution.
