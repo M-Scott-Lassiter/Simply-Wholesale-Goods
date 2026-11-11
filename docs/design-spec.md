@@ -14,7 +14,7 @@ pages or a bulk order form, then use the existing cart, checkout, payment gatewa
 and order management.
 
 This is an implementation handoff, not a record of completed implementation or tests.
-The repository has not been created as part of preparing this specification.
+Implement the plugin in this existing repository.
 
 ## 1. Authority and implementation defaults
 
@@ -43,9 +43,7 @@ previously approved business rules.
 7. **Simple products:** ordinary simple products remain retail-only in v1. Wholesale
    offerings use native variations, including a one-variation variable product if
    necessary.
-8. **Repository visibility:** use a private repository initially if visibility has not
-   otherwise been specified. Repository publication and production installation are
-   separate from building the plugin.
+8. **Repository visibility:** Use this existing repository and preserve its current visibility. Release publication and production installation are separate from building the plugin.
 
 Direct bank transfer eligibility is an explicit user decision. When enabled, bacs receives
 the same percentage discount and uses the same rounding toggle as cod and cheque.
@@ -937,7 +935,7 @@ initial release workflow.
 
 ### Phase 1: Repository and test foundation
 
-Create the agreed repository, establish Composer/Node commands, configure the isolated
+In this repository, establish Composer/Node commands, configure the isolated
 WordPress/WooCommerce environment, and add realistic fixtures. Build an installable empty
 plugin package and verify activation/dependency handling.
 
